@@ -5,8 +5,8 @@
 ### Cartographer
 
 Представлява картограф, участвал в създаването на карта. Съдържа:
-- `name` - име
-- `yearsExperience` - години опит
+- `name`
+- `yearsExperience`
 
 Задължителни виртуални методи:
 - `string getRole() const`
@@ -20,7 +20,7 @@
 | `Archivist` | `string institution` - институцията, към която принадлежи |
 | `ExpeditionLeader` | `int expeditionsLed` - брой ръководени експедиции |
 
-Картографите се споделят между карти — един и същи картограф може да е допринесъл за множество карти. Затова `Map` съдържа `vector<shared_ptr<Cartographer>>`. Копирането на карта **не** клонира картографите, а споделя същите обекти.
+Един и същи картограф може да е допринесъл за множество карти.
 
 ---
 
@@ -28,13 +28,12 @@
 
 Представлява забележителност върху карта. Съдържа:
 - `name` - име
-- `coords` - координати (`Coords { float x, y }`)
+- `coords` - координати (`Coords { double x, y }`)
 - `threat` - ниво на заплаха (0–10); при невалидна стойност се хвърля `std::invalid_argument`
 
 Задължителни виртуални методи:
 - `string getType() const`
 - `print() const`
-- `unique_ptr<Landmark> clone() const` - полиморфно клониране
 
 Конкретни наследници:
 
@@ -46,8 +45,6 @@
 | `Ruin` | `string civilization` |
 
 `FeatureKind` е `enum class` с членове: `Volcano, Forest, Lake, Bog, Mountain, Desert`.
-
-За разлика от картографите, забележителностите се **притежават** от територията — всяка `Territory` съдържа свои независими копия.
 
 ---
 
@@ -71,9 +68,7 @@ static std::unique_ptr<Landmark> create(
 
 ### Territory
 
-Притежава `vector<unique_ptr<Landmark>> landmarks`.
-
-**Копирането е дълбоко копие** - всяка забележителност се клонира полиморфно чрез `clone()`. Двa независими `Territory` обекта не споделят памет.
+Притежава `vector<unique_ptr<Landmark>> landmarks`. Две различни територии **не** споделят забележителности.
 
 Основни методи:
 - `addLandmark(unique_ptr<Landmark>)`
@@ -86,8 +81,6 @@ static std::unique_ptr<Landmark> create(
 
 ### Command
 
-Всяка промяна на `Territory` минава през команда. Командата получава `Territory&` в конструктора и е обвързана с нея от момента на създаването. `execute()` и `undo()` са безаргументни.
-
 ```cpp
 Command                   (абстрактен)
 ├── AddLandmarkCommand
@@ -95,7 +88,7 @@ Command                   (абстрактен)
 └── SetDangerLevelCommand
 ```
 
-Всяка команда реализира:
+Всяка команда има `Territory&` за контекст и реализира:
 - `execute()`
 - `undo()`
 - `string description() const`
@@ -103,8 +96,6 @@ Command                   (абстрактен)
 ---
 
 ### CommandFactory
-
-Командите не се конструират директно - създават се чрез `CommandFactory`:
 
 ```cpp
 static std::unique_ptr<Command> create(
@@ -114,7 +105,7 @@ static std::unique_ptr<Command> create(
 );
 ```
 
-При непознат тип се хвърля `std::invalid_argument`. `"add"` делегира парсването на `LandmarkFactory`.
+При непознат тип се хвърля `std::invalid_argument`. `"add"` делегира парсването на аргументите на `LandmarkFactory`.
 
 ---
 
@@ -124,18 +115,11 @@ static std::unique_ptr<Command> create(
 
 Освен територия, всяка карта пази списък от картографи: `vector<shared_ptr<Cartographer>>`.
 
-`Map` управлява историята на редакциите директно чрез `vector<unique_ptr<Command>>`. Няма отделен `EditLog` клас.
+`Map` управлява историята на редакциите директно чрез `vector<unique_ptr<Command>>`.
 
-**Семантика на копиране и преместване:**
+При копиране на `Map`, новият започва с празна история на редакциите.
 
-| Операция | `territory` | `cartographers` | история |
-|---|---|---|---|
-| `Copy` | shallow — споделена | shallow — същите картографи | не се копира — новата карта започва с празна история |
-| `Move` | `= default` | `= default` | `= default` |
-
-Копирането на карта е изцяло **shallow** — нито територията, нито картографите се клонират.
-
-Метод `unlink()`: ако картата е свързана (`use_count > 1`), прави дълбоко копие **само на територията** и изчиства историята. Картографите остават споделени. Ако вече е независима - no-op.
+Метод `unlink()`: ако картата е свързана (`use_count > 1`), прави дълбоко копие **само на територията** и изчиства историята. Картографите остават споделени.
 
 Методи:
 - `addCartographer(shared_ptr<Cartographer>)`
@@ -148,13 +132,13 @@ static std::unique_ptr<Command> create(
 
 ### Curator
 
-Управлява колекция от карти `vector<unique_ptr<Map>>`.
+Управлява колекция от карти `vector<unique_ptr<Map>> maps`.
 
 Методи:
 - `Map& addLinkedMap(title, shared_ptr<Territory>)`
 - `Map& addIndependentMap(title, Territory)`
-- `Map& copyAsIndependent(sourceTitle, newTitle)` - shallow copy чрез copy ctor, после `unlink()` върху копието
-- `Map& get(title)`
+- `Map& copyAsIndependent(sourceTitle, newTitle)` - създава независимо копие на картата с име `sourceTitle` и го променя на `newTitle`, вмъква копието в `maps` и връща референция към него
+- `Map& getMap(title)`
 - `listMaps() const`
 
 ---
