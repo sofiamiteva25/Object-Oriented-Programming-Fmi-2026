@@ -41,7 +41,7 @@ private:
 int main() {
    /* URL url = URL::builder("https", "www", "example.com")
         .setPath("/index.html")
-        .setCountry("BGN")
+        .setCountry("BG")
                    .build();*/
     URL url("https", "www", "example.com", "/index.html");
      std::cout << url.toString() << std::endl;
