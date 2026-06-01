@@ -18,7 +18,7 @@ public:
         return url;
     }
     URL(const string& _protocol, const string& _subdomain, const string& _domain,
-        const string& _path = "",const string& _country = "") :
+        const string& _path = "",const string& _country = "", optional<int> discount= nullopt) :
         protocol(_protocol),
         subdomain(_subdomain),
         domain(_domain),
@@ -35,6 +35,7 @@ private:
 //optional
     std::string path;
     std::string country;
+    optional<int> discount;
 
 };
 
