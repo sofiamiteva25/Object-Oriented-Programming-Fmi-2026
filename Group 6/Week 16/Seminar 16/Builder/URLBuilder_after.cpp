@@ -1,65 +1,48 @@
-#pragma once
+//#pragma once
 
 #include <string>
 #include <iostream>
-
+#include <optional>
+using namespace std;
 class URL {
 
-private:
-    std::string protocol;
-    std::string subdomain;
-    std::string domain;
-   //optional
-    std::string path;
-    std::string country;
+public:
 
-    // Nested Builder
     struct Builder {
-        // Required
         std::string protocol;
         std::string subdomain;
         std::string domain;
+        //optional
+        std::string path;
+        std::string country;
+        optional<int> discount;
 
-        // Optional (default-initialized)
-        std::string path = "";
-        std::string country = "";
-        
-        Builder(std::string proto, std::string sub, std::string dom)
-            : protocol(std::move(proto)),
-            subdomain(std::move(sub)),
-            domain(std::move(dom)) {
+        Builder(const string& _protocol, const string& _subdomain, const string& _domain)
+        : protocol(_protocol), subdomain(_subdomain), domain(_domain){
+            
         }
 
-        Builder& setPath(std::string p) {
-            path = std::move(p);
+        Builder& setPath(const string& path) {
+            this->path = path;
             return *this;
         }
-        Builder& setCountry(std::string c) {
-            country = c;
+        Builder& setCountry(const string& _country) {
+            country = _country;
+            return *this;
+        }
+        Builder& setDiscount(int d) {
+            discount = d;
             return *this;
         }
 
-        URL build() const {
+        URL build()  const {
             return URL(*this);
         }
     };
 
-    // Only Builder can construct
-    explicit URL(const Builder& b)
-        : protocol(b.protocol),
-        subdomain(b.subdomain),
-        domain(b.domain),
-        path(b.path),
-        country(b.country) {
+    static Builder builder(const string& _protocol, const string& _subdomain, const string& _domain) {
+        return Builder(_protocol, _subdomain, _domain);
     }
-public:
-    // Static factory for discoverability and encapsulation
-    static Builder builder(const std::string& protocol,
-        const std::string& subdomain,
-        const std::string& domain) {
-        return Builder(protocol, subdomain, domain);
-    }
-
     // Convert to string
     std::string toString() const {
         std::string url = protocol + "://" + subdomain + "." + domain;
@@ -68,16 +51,52 @@ public:
             url += "?country=";
             url += country;
         }
+        if (discount.has_value()) {
+            url += "&discount=";
+            url += to_string(discount.value()) + '%';
+        }
         return url;
     }
+    URL(const string& _protocol, const string& _subdomain, const string& _domain,
+        const string& _path = "", const string& _country = "", const optional<int>& discount=nullopt) :
+        protocol(_protocol),
+        subdomain(_subdomain),
+        domain(_domain),
+        path(_path),
+        country(_country),
+        discount(discount)
+    {
 
+    }
+
+private:
+    std::string protocol;
+    std::string subdomain;
+    std::string domain;
+    //optional
+    std::string path;
+    std::string country;
+    optional<int> discount;
+
+    explicit URL(const Builder& b) :
+        protocol(b.protocol),
+        subdomain(b.subdomain),
+        domain(b.domain),
+        path(b.path),
+        country(b.country),
+        discount(b.discount)
+    {
+
+    }
 };
 
 int main() {
-    URL url = URL::builder("https", "www", "example.com")
-        .setPath("/index.html")
-        .setCountry("BG")
-        .build();
+     URL url = URL::builder("https", "www", "example.com")
+         .setPath("/index.html")
+         .setCountry("BG")
+         .setDiscount(50)
+                    .build();
+   // URL url("https", "www", "example.com", "/index.html","BG", std::nullopt);
     std::cout << url.toString() << std::endl;
     return 0;
 }
